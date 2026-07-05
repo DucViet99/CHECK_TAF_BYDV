@@ -141,9 +141,20 @@ TEMPO 1310/1316 4000 SHRA SCT005 BKN020""",
                     st.success("✅ **TAF hợp lệ**")
                 else:
                     st.error(f"❌ **TAF không hợp lệ**")
+
+                meta = report.get('metadata', {})
+                airport = meta.get('airport')
+                if airport:
+                    icao = meta.get('icao', '')
+                    st.caption(
+                        f"🛫 Sân bay: **{airport.get('name', '?')}** ({icao}) — {airport.get('location', '?')} · "
+                        f"Loại bản tin: {meta.get('taf_type', 'TAF')} · "
+                        f"Hiệu lực: {meta.get('validity_period', '?')} "
+                        f"({meta.get('duration_hours', '?')} giờ)"
+                    )
             
             with col_stats:
-                error_count = len([e for e in report['errors'] if e.get('error_type') != 'INFO'])
+                error_count = len([e for e in report['errors'] if e.get('error_type') in ('ERROR', 'FATAL')])
                 warning_count = len(report['warnings'])
                 st.metric("Lỗi", error_count, delta=None)
                 st.metric("Cảnh báo", warning_count, delta=None)
@@ -157,25 +168,36 @@ TEMPO 1310/1316 4000 SHRA SCT005 BKN020""",
                     stage = error.get('stage', 'UNKNOWN')
                     msg = error.get('message', '')
                     ref = error.get('regulation_ref', '')
+                    suggestion = error.get('suggestion', '')
                     
                     ref_str = f" ({ref})" if ref else ""
+                    suggestion_str = f"<br/>💡 <em>Gợi ý: {suggestion}</em>" if suggestion else ""
                     st.markdown(f"""
 <div class="error-box">
-    <strong>[{stage}]</strong> {msg}{ref_str}
+    <strong>[{stage}]</strong> {msg}{ref_str}{suggestion_str}
 </div>
 """, unsafe_allow_html=True)
             
             if report['warnings']:
-                st.subheader("🟡 Cảnh báo")
+                st.subheader("🟡 Cảnh báo / Gợi ý")
                 for warning in report['warnings']:
                     stage = warning.get('stage', 'UNKNOWN')
                     msg = warning.get('message', '')
                     ref = warning.get('regulation_ref', '')
+                    suggestion = warning.get('suggestion', '')
                     
                     ref_str = f" ({ref})" if ref else ""
+                    suggestion_str = f"<br/>💡 <em>Gợi ý: {suggestion}</em>" if suggestion else ""
                     st.markdown(f"""
 <div class="warning-box">
-    <strong>[{stage}]</strong> {msg}{ref_str}
+    <strong>[{stage}]</strong> {msg}{ref_str}{suggestion_str}
+</div>
+""", unsafe_allow_html=True)
+
+            if report['valid'] and not report['errors'] and not report['warnings']:
+                st.markdown("""
+<div class="success-box">
+    Không phát hiện lỗi hoặc cảnh báo nào. Bản tin tuân thủ cấu trúc và các ngưỡng quy định tại 1656/QĐ-CHK.
 </div>
 """, unsafe_allow_html=True)
             
